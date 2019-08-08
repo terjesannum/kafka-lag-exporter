@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "kafka-lag-exporter.fullname" . }}
@@ -69,6 +69,12 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["all"]
+            runAsNonRoot: true
+            runAsUser: {{ .Values.runAsUser }}
           livenessProbe:
             httpGet:
               path: /
