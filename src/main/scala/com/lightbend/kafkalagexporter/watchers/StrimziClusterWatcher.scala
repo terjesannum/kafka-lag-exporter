@@ -5,9 +5,8 @@
 package com.lightbend.kafkalagexporter.watchers
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior, PostStop}
-import com.lightbend.kafkalagexporter.KafkaCluster
-import com.lightbend.kafkalagexporter.KafkaClusterManager
+import akka.actor.typed.{ActorRef, Behavior}
+import com.lightbend.kafkalagexporter.{KafkaCluster, KafkaClusterManager}
 
 object StrimziClusterWatcher {
   val name: String = "strimzi"
@@ -24,13 +23,9 @@ object StrimziClusterWatcher {
 
   def watch(client: Watcher.Client): Behaviors.Receive[Watcher.Message] = Behaviors.receive {
     case (context, _: Watcher.Stop) =>
-      Behaviors.stopped {
-        Behaviors.receiveSignal {
-          case (_, PostStop) =>
-            client.close()
-            context.log.info("Gracefully stopped StrimziKafkaWatcher")
-            Behaviors.same
-        }
+      Behaviors.stopped { () =>
+        client.close()
+        context.log.info("Gracefully stopped StrimziKafkaWatcher")
       }
   }
 }

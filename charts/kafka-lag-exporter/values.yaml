@@ -1,28 +1,26 @@
-runAsUser: 10001
-
-## Statically define 1 or more cluster
+## Statically define one or more cluster
 clusters: {}
 ## Ex)
-# clusters:
+#clusters:
 #  - name: "default"
-#    bootstrapBrokers: "my-cluster-kafka-bootstrap:9092"
-#    # optional values for TLS/SASL enabled clusters
-#    securityProtocol: SASL_SSL
-#    saslMechanism: PLAIN
-#    saslJaasConfig: org.apache.kafka.common.security.plain.PlainLoginModule required username=\"foo\" password=\"bar\";
+#    bootstrapBrokers: "simple-strimzi-kafka-bootstrap.strimzi.svc.cluster.local:9092"
+#    # Properties defined by org.apache.kafka.clients.consumer.ConsumerConfig
+#    # can be defined in this configuration section.
+#    # https://kafka.apache.org/documentation/#consumerconfigs
+#    consumerProperties: {
+#      client.id: consumer-client-id
+#    }
+#    # https://kafka.apache.org/documentation/#adminclientconfigs
+#    adminClientProperties: {
+#      client.id: admin-client-id
+#    }
 
 ## The interval between refreshing metrics
-pollIntervalSeconds: 5
+pollIntervalSeconds: 30
 ## Size of the sliding window of offsets to keep in each partition's lookup table
-lookupTableSize: 20
+lookupTableSize: 60
 ## The Consumer Group `group.id` to use when connecting to Kafka
 clientGroupId: "kafkalagexporter"
-## The log level of the ROOT logger
-rootLogLevel: INFO
-## The log level of Kafka Lag Exporter
-kafkaLagExporterLogLevel: INFO
-## The log level of `org.apache.kafka` logger
-kafkaLogLevel: INFO
 ## The timeout when communicating with Kafka clusters
 kafkaClientTimeoutSeconds: 10
 ## Watchers will automatically discover and forget Kafka clusters
@@ -31,10 +29,19 @@ watchers:
   ## configure the Kafka Lag Exporter appropriately.
   strimzi: false
 
+## The log level of the ROOT logger
+rootLogLevel: INFO
+## The log level of Kafka Lag Exporter
+kafkaLagExporterLogLevel: INFO
+## The log level of `org.apache.kafka` logger
+kafkaLogLevel: INFO
+## The log level of Akka
+akkaLogLevel: DEBUG
+
 ## You probably won't need to change anything below this line.
 image:
   repository: lightbend/kafka-lag-exporter
-  tag: 0.4.1-SNAPSHOT
+  tag: 0.5.1-SNAPSHOT
   pullPolicy: Always
 service:
   type: ClusterIP

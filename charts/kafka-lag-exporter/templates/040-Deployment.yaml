@@ -28,43 +28,7 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: KAFKA_LAG_EXPORTER_PORT
-              value: "{{ .Values.service.port }}"
-            - name: KAFKA_LAG_EXPORTER_POLL_INTERVAL_SECONDS
-              value: "{{ .Values.pollIntervalSeconds }} seconds"
-            - name: KAFKA_LAG_EXPORTER_POLL_LOOKUP_TABLE_SIZE
-              value: "{{ .Values.lookupTableSize }}"
-            - name: KAFKA_LAG_EXPORTER_CLIENT_GROUP_ID
-              value: "{{ .Values.clientGroupId }}"
-            - name: ROOT_LOG_LEVEL
-              value: "{{ .Values.rootLogLevel }}"
-            - name: KAFKA_LAG_EXPORTER_LOG_LEVEL
-              value: "{{ .Values.kafkaLagExporterLogLevel }}"
-            - name: KAFKA_LAG_EXPORTER_KAFKA_LOG_LEVEL
-              value: "{{ .Values.kafkaLogLevel }}"
-            - name: KAFKA_LAG_EXPORTER_KAFKA_CLIENT_TIMEOUT_SECONDS
-              value: "{{ .Values.kafkaClientTimeoutSeconds }} seconds"
-            - name: KAFKA_LAG_EXPORTER_STRIMZI
-              value: "{{ .Values.watchers.strimzi }}"
-            {{- range $index, $cluster := .Values.clusters }}
-            - name: "KAFKA_LAG_EXPORTER_CLUSTERS.{{ $index }}.name"
-              value: "{{ $cluster.name }}"
-            - name: "KAFKA_LAG_EXPORTER_CLUSTERS.{{ $index }}.bootstrap-brokers"
-              value: "{{ $cluster.bootstrapBrokers }}"
-            {{- if $cluster.securityProtocol }}
-            - name: "KAFKA_LAG_EXPORTER_CLUSTERS.{{ $index }}.security-protocol"
-              value: "{{ $cluster.securityProtocol }}"
-            {{- end }}
-            {{- if $cluster.saslMechanism }}
-            - name: "KAFKA_LAG_EXPORTER_CLUSTERS.{{ $index }}.sasl-mechanism"
-              value: "{{ $cluster.saslMechanism }}"
-            {{- end }}
-            {{- if $cluster.saslJaasConfig }}
-            - name: "KAFKA_LAG_EXPORTER_CLUSTERS.{{ $index }}.sasl-jaas-config"
-              value: "{{ $cluster.saslJaasConfig }}"
-            {{- end }}
-            {{- end }}
+          env: []
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -83,6 +47,9 @@ spec:
             httpGet:
               path: /
               port: http
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opt/docker/conf/
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           volumeMounts:
@@ -102,3 +69,7 @@ spec:
       tolerations:
 {{ toYaml . | indent 8 }}
     {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "kafka-lag-exporter.fullname" . }}-configmap

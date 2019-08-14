@@ -9,17 +9,23 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Introduction](#introduction)
 - [Metrics](#metrics)
   - [Labels](#labels)
-- [Configuration](#configuration)
-- [Install with Helm](#install-with-helm)
-  - [Examples](#examples)
+- [Run on Kubernetes](#run-on-kubernetes)
+  - [Configuration](#configuration)
+  - [Install with Helm](#install-with-helm)
+    - [Examples](#examples)
   - [View the health endpoint](#view-the-health-endpoint)
-  - [View exporter logs](#view-exporter-logs)
+    - [View exporter logs](#view-exporter-logs)
+- [Run Standalone](#run-standalone)
+  - [Configuration](#configuration-1)
+  - [Running Docker Image](#running-docker-image)
 - [Estimate Consumer Group Time Lag](#estimate-consumer-group-time-lag)
 - [Strimzi Kafka Cluster Watcher](#strimzi-kafka-cluster-watcher)
 - [Monitoring with Grafana](#monitoring-with-grafana)
+- [Filtering Metrics without Prometheus Server](#filtering-metrics-without-prometheus-server)
 - [Development](#development)
   - [Tests](#tests)
   - [Testing with local `docker-compose.yaml`](#testing-with-local-docker-composeyaml)
@@ -33,7 +39,7 @@
 
 ## Introduction
 
-Kafka Lag Exporter makes it easy to view the latency of your [Apache Kafka](https://kafka.apache.org/) 
+Kafka Lag Exporter makes it easy to view the latency (residence time) of your [Apache Kafka](https://kafka.apache.org/) 
 consumer groups. It can run anywhere, but it provides features to run easily on [Kubernetes](https://kubernetes.io/) 
 clusters against [Strimzi](https://strimzi.io/) Kafka clusters using the [Prometheus](https://prometheus.io/) and [Grafana](https://grafana.com/) 
 monitoring stack. Kafka Lag Exporter is an [Akka Typed](https://doc.akka.io/docs/akka/current/typed/index.html) 
@@ -44,6 +50,8 @@ For more information about Kafka Lag Exporter's features see Lightbend's blog po
 
 **Project Status:** *beta*
 
+**Author:** [Sean Glover](https://seanglover.com) ([@seg1o](https://twitter.com/seg1o))
+
 ## Metrics
 
 [Prometheus](https://prometheus.io/) is a standard way to represent metrics in a modern cross-platform manner. Kafka Lag 
@@ -53,31 +61,31 @@ automatically detect the HTTP endpoint and scrape its data.
 
 **`kafka_consumergroup_group_offset`**
 
-Labels: `cluster_name, group, topic, partition, state, is_simple_consumer, member_host, consumer_id, client_id`
+Labels: `cluster_name, group, topic, partition, member_host, consumer_id, client_id`
 
 The offset of the last consumed offset for this partition in this topic partition for this group.
 
 **`kafka_consumergroup_group_lag`**
 
-Labels: `cluster_name, group, topic, partition, state, is_simple_consumer, member_host, consumer_id, client_id`
+Labels: `cluster_name, group, topic, partition, member_host, consumer_id, client_id`
 
 The difference between the last produced offset and the last consumed offset for this partition in this topic partition for this group.
 
 **`kafka_consumergroup_group_lag_seconds`**
 
-Labels: `cluster_name, group, topic, partition, state, is_simple_consumer, member_host, consumer_id, client_id`
+Labels: `cluster_name, group, topic, partition, member_host, consumer_id, client_id`
 
 The estimated lag in seconds.  This metric correlates with lag in offsets.  For more information on how this is calculated read the Estimate consumer group lag in time section below.
 
 **`kafka_consumergroup_group_max_lag`**
 
-Labels: `cluster_name, group, state, is_simple_consumer`
+Labels: `cluster_name, group, is_simple_consumer`
 
 The highest (maximum) lag in offsets for a given consumer group.
 
 **`kafka_consumergroup_group_max_lag_seconds`**
 
-Labels: `cluster_name, group, state, is_simple_consumer`
+Labels: `cluster_name, group, is_simple_consumer`
 
 The highest (maximum) lag in time for a given consumer group.
 
@@ -86,7 +94,6 @@ The highest (maximum) lag in time for a given consumer group.
 Labels: `cluster_name, topic, partition`
 
 The latest offset available for topic partition.  Kafka Lag Exporter will calculate a set of partitions for all consumer groups available and then poll for the last produced offset.  The last produced offset is used in the calculation of other metrics provided, so it is exported for informational purposes.  For example, the accompanying Grafana dashboard makes use of it to visualize the last produced offset and the last consumed offset in certain panels.
-Labels
 
 ### Labels
 
@@ -99,34 +106,34 @@ Each metric may include the following labels when reported.
 
 The rest of the labels are passed along from the consumer group metadata requests.
 
-* `state` - The state of the consumer group when the group data was polled.
-* `is_simple_consumer` - Is this group using the [old] simple consumer API.
 * `member_host` - The hostname or IP of the machine or container running the consumer group member that is assigned this partition.
 * `client_id` - The id of the consumer group member.  This is usually generated automatically by the group coordinator.
 * `consumer_id` - The globally unique id of the consumer group member.  This is usually a combination of the client_id and a GUID generated by the group coordinator.
 
 Prometheus server may add additional labels based on your configuration.  For example, Kubernetes pod information about the Kafka Lag Exporter pod where the metrics were scraped from.
 
-## Configuration
+## Run on Kubernetes
+
+### Configuration
 
 Details for configuration for the Helm Chart can be found in the [`values.yaml`](./charts/kafka-lag-exporter/values.yaml)
 file of the accompanying Helm Chart.
 
-## Install with Helm
+### Install with Helm
 
 You can install the chart from the local filesystem.
 
 ```
-helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.4.0/kafka-lag-exporter-0.4.0.tgz
+helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.5.0/kafka-lag-exporter-0.5.0.tgz
 ```
 
-### Examples
+#### Examples
 
 Install with the [Strimzi](https://strimzi.io/) Kafka discovery feature.
 See [Strimzi Kafka Cluster Watcher](#strimzi-kafka-cluster-watcher) for more details.
 
 ```
-helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.4.0/kafka-lag-exporter-0.4.0.tgz \
+helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.5.0/kafka-lag-exporter-0.5.0.tgz \
   --name kafka-lag-exporter \
   --namespace kafka-lag-exporter \
   --set watchers.strimzi=true
@@ -135,7 +142,7 @@ helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v
 Install with statically defined cluster at the CLI.
 
 ```
-helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.4.0/kafka-lag-exporter-0.4.0.tgz \
+helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.5.0/kafka-lag-exporter-0.5.0.tgz \
   --name kafka-lag-exporter \
   --namespace myproject \
   --set clusters\[0\].name=my-cluster \
@@ -145,7 +152,7 @@ helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v
 Run a debug install (`DEBUG` logging, debug helm chart install, force docker pull policy to `Always`).
 
 ```
-helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.4.0/kafka-lag-exporter-0.4.0.tgz \
+helm install https://github.com/lightbend/kafka-lag-exporter/releases/download/v0.5.0/kafka-lag-exporter-0.5.0.tgz \
   --name kafka-lag-exporter \
   --namespace myproject \
   --set image.pullPolicy=Always \
@@ -165,7 +172,7 @@ Ex)
 kubectl port-forward service/kafka-lag-exporter-service 8080:8000 --namespace myproject
 ```
 
-### View exporter logs
+#### View exporter logs
 
 To view the logs of the exporter, identify the pod name of the exporter and use the `kubectl logs` command.
 
@@ -175,9 +182,86 @@ Ex)
 kubectl logs {POD_ID} --namespace myproject -f
 ```
 
+## Run Standalone
+
+To run the project in standalone mode you must first define a configuration `application.conf`. This configuration must
+contain at least connection info to your Kafka cluster (`kafka-lag-exporter.clusters`). All other configuration has 
+defaults defined in the project itself.  See [`reference.conf`](./src/main/resources/reference.conf) for defaults.
+### Configuration
+
+General Configuration (`kafka-lag-exporter{}`)
+
+| Key                    | Default            | Description                                                                                                                           |
+|------------------------|--------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `port`                 | `8000`             | The port to run the Prometheus endpoint on                                                                                            |
+| `poll-interval`        | `30 seconds`       | How often to poll Kafka for latest and group offsets                                                                                  |
+| `lookup-table-size`    | `60`               | The maximum window size of the look up table **per partition**                                                                        |
+| `client-group-id`      | `kafkalagexporter` | Consumer group id of kafka-lag-exporter's client connections                                                                          |
+| `kafka-client-timeout` | `10 seconds`       | Connection timeout when making API calls to Kafka                                                                                     |
+| `clusters`             | `[]`               | A statically defined list of Kafka connection details.  This list is optional if you choose to use the Strimzi auto-discovery feature |
+| `watchers`             | `{}`               | Settings for Kafka cluster "watchers" used for auto-discovery.                                                                        |
+
+Kafka Cluster Connection Details (`kafka-lag-exporter.clusters[]`)
+
+| Key                       | Default     | Required | Description                                                                                                                                                                                        |
+|---------------------------|-------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`                    | `""`        | Yes      | A unique cluster name to for this Kafka connection detail object                                                                                                                                   |
+| `bootstrap-brokers`       | `""`        | Yes      | Kafka bootstrap brokers.  Comma delimited list of broker hostnames                                                                                                                                 |
+| `consumer-properties`     | `{}`        | No       | A map of key value pairs used to configure the `KafkaConsumer`. See the [Consumer Config](https://kafka.apache.org/documentation/#consumerconfigs) section of the Kafka documentation for options. |
+| `admin-client-properties` | `{}`        | No       | A map of key value pairs used to configure the `AdminClient`. See the [Admit Config](https://kafka.apache.org/documentation/#adminclientconfigs) section of the Kafka documentation for options.   |
+
+Watchers (`kafka-lag-exporters.watchers{}`)
+
+| Key                 | Default     | Description                              |
+|---------------------|-------------|------------------------------------------|
+| `strimzi`           | `false`     | Toggle for using Strimzi auto-discovery. |
+
+
+Ex) Expose metrics on port `9999`, double the default lookup table size, and define `client.id`'s for the `KafkaConsumer`
+and `AdminClient` used by the project.
+
+```
+kafka-lag-exporter {
+  port = 9999
+  lookup-table-size = 120
+  clusters = [
+    {
+      name = "a-cluster"                                   
+      bootstrap-brokers = "a-1.cluster-a.xyzcorp.com:9092,a-2.cluster-a.xyzcorp.com:9092,a-3.cluster-a.xyzcorp.com:9092"
+      consumer-properties = {
+        client.id = "consumer-client-id"
+      }
+      admin-client-properties = {
+        client.id = "admin-client-id"
+      }
+    }
+  ]
+}
+```
+
+### Running Docker Image
+
+Define an `application.conf` and optionally a `logback.xml` with your configuration.
+
+Run the Docker image. Expose metrics endpoint on the host port `8000`. Mount a config dir with your `application.conf` 
+`logback.xml` into the container.
+
+Ex)
+
+```
+docker run -p 8000:8000 \
+    -v $(pwd):/opt/docker/conf/ \
+    lightbend/kafka-lag-exporter:0.4.0 \
+    /opt/docker/bin/kafka-lag-exporter \
+    -Dconfig.file=/opt/docker/conf/application.conf \
+    -Dlogback.configurationFile=/opt/docker/conf/logback.xml
+```
+
+See full example in [`./examples/standalone`](./examples/standalone).
+
 ## Estimate Consumer Group Time Lag
 
-One of Kafka Lag Exporter’s more unique features is its ability to estimate the length of time that a consumer group is behind the last produced value for a particular partition, time lag.  Offset lag is useful to indicate that the consumer group is lagging, but it doesn’t provide a sense of the actual latency of the consuming application.  
+One of Kafka Lag Exporter’s more unique features is its ability to estimate the length of time that a consumer group is behind the last produced value for a particular partition, time lag (wait time).  Offset lag is useful to indicate that the consumer group is lagging, but it doesn’t provide a sense of the actual latency of the consuming application.  
 
 For example, a topic with two consumer groups may have different lag characteristics.  Application A is a consumer which performs CPU intensive (and slow) business logic on each message it receives. It’s distributed across many consumer group members to handle the high load, but since its processing throughput is slower it takes longer to process each message per partition.   Meanwhile Application B is a consumer which performs a simple ETL operation to land streaming data in another system, such as an HDFS data lake.  It may have similar offset lag to Application A, but because it has a higher processing throughput its lag in time may be significantly less.
 
@@ -242,6 +326,25 @@ in time on the left Y axis and max lag in offsets on the right Y axis. Ex)
 axis.  The right Y axis has the sum of latest and last consumed offsets for all group partitions. Ex)
 ![Max Consumer Group Time Lag Over Summed Offsets](./grafana/max_consumer_group_time_lag_over_summed_offsets.png)
 4. **Kafka Lag Exporter JVM Metrics** - JVM metrics for the Kafka Lag Exporter itself.
+
+## Filtering Metrics without Prometheus Server
+
+It's possible to filter specific metric names using HTTP query parameters to the metrics health endpoint.
+
+To filter 1 or more metrics use the query parameter pattern of `name[]=prometheus_metric_name`.
+
+Ex)
+
+```
+$ curl -X GET -g http://localhost:8080?name[]=kafka_consumergroup_group_max_lag
+# HELP kafka_consumergroup_group_max_lag Max group offset lag
+# TYPE kafka_consumergroup_group_max_lag gauge
+kafka_consumergroup_group_max_lag{cluster_name="pipelines-strimzi",group="variable-throughput-runtime.f3-merge.in01",} 52.0
+...
+```
+
+This is an undocumented feature of the Prometheus HTTP server.  For reference consult the [`parseQuery` method](https://github.com/prometheus/client_java/blob/4e0e7527b048f1ffd0382dcb74c0b9dab23b4d9f/simpleclient_httpserver/src/main/java/io/prometheus/client/exporter/HTTPServer.java#L101) for the
+HTTP server in the [`prometheus/client_java`](https://github.com/prometheus/client_java/) GitHub repository.
 
 ## Development
 
@@ -319,6 +422,17 @@ Update values.yaml docker repository to docker.xyzcorp.com/foobar/kafka-lag-expo
 [success] Total time: 17 s, completed 1-May-2019 2:37:28 PM
 ``` 
 
+Deploy the local chart to K8s:
+
+```
+helm install ./charts/kafka-lag-exporter \
+  --name kafka-lag-exporter \
+  --namespace kafka-lag-exporter \
+  --set watchers.strimzi=true \
+  --set kafkaLagExporterLogLevel=DEBUG \
+  --set image.pullPolicy=Always
+```
+
 ## Release
 
 ### Pre-requisites
@@ -338,6 +452,30 @@ required.  Before running a release make sure the following pre-req's are met.
 4. Review the GitHub release draft and submit it.
 
 ## Change log
+
+0.5.0
+
+* Bugfix: Report NaN for group offset, lag, and time lag when no group offset returned. [#50](https://github.com/lightbend/kafka-lag-exporter/pull/50)
+* Support arbitrary kafka client configuration. [#48](https://github.com/lightbend/kafka-lag-exporter/pull/48)
+* Use ConfigMap to provide app and logging config. [#47](https://github.com/lightbend/kafka-lag-exporter/pull/47)
+* Bugfix: Use lag offsets metric in lag offsets panel Grafana dashboard. [#39](https://github.com/lightbend/kafka-lag-exporter/pull/39/) ([@msravan](https://github.com/msravan))
+
+0.4.3
+
+* Update chart defaults to match app defaults.  Poll interval: 30s, Lookup table size: 60.
+
+0.4.2
+
+* Bugfix: Check for missing group topic partitions after collecting all group offsets. Regression bugfix. [#30](https://github.com/lightbend/kafka-lag-exporter/issues/30)
+* Make simple polling logging `INFO` log level. Added `DEBUG` logging to show all offsets collected per poll for troubleshooting.
+
+0.4.1
+
+* Remove labels `state` and `is_simple_consumer` from group topic partition metrics
+* Document metric endpoint filtering [#24](https://github.com/lightbend/kafka-lag-exporter/issues/24)
+* Document standalone deployment mode [#22](https://github.com/lightbend/kafka-lag-exporter/issues/22)
+* Evict metrics from endpoint when they're no longer tracked by Kafka [#25](https://github.com/lightbend/kafka-lag-exporter/issues/25)
+* Support clusters with TLS and SASL [#21](https://github.com/lightbend/kafka-lag-exporter/pull/21)
 
 0.4.0
 
