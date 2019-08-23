@@ -20,10 +20,6 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "kafka-lag-exporter.fullname" . }}-serviceaccount
-      volumes:
-        - name: cacerts
-          configMap:
-            name: ca-bundle
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -50,13 +46,12 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /opt/docker/conf/
-          resources:
-{{ toYaml .Values.resources | indent 12 }}
-          volumeMounts:
             - name: cacerts
               mountPath: /etc/pki/ca-trust/extracted/java/cacerts
               subPath: ca-bundle.jks
               readOnly: true
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
@@ -73,3 +68,6 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "kafka-lag-exporter.fullname" . }}-configmap
+        - name: cacerts
+          configMap:
+            name: ca-bundle-jks

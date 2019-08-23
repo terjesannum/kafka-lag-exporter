@@ -1,3 +1,5 @@
+runAsUser: 10001
+
 ## Statically define one or more cluster
 clusters: {}
 ## Ex)
